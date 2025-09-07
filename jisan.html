@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MD JISAN — Modern Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-1: #071021;
+      --bg-2: #07182a;
+      --glass: rgba(255,255,255,0.04);
+      --muted: #9fb3c8;
+      --accent-a: #7c3aed;
+      --accent-b: #06b6d4;
+      --card: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.06);
+    }
+   
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
+      color: #e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow-x:hidden;
+      scroll-behavior:smooth;
+    }
+
+    /* Canvas background full screen */
+    #bg {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+    }
+
+    .container{
+      position:relative; z-index:5;
+      max-width:1100px; margin:0 auto; padding:36px 22px 80px;
+    }
+
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:24px;
+    }
+    .brand{display:flex;gap:12px;align-items:center}
+    .avatar{
+      width:64px;height:64px;border-radius:14px;overflow:hidden;border:2px solid rgba(255,255,255,0.06);
+      box-shadow:0 8px 30px rgba(2,6,23,0.6);background:linear-gradient(135deg,var(--accent-a),var(--accent-b));
+      display:grid;place-items:center;flex:0 0 64px;
+      transform-origin:center;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+    .brand h1{margin:0;font-size:18px;letter-spacing:0.4px}
+    .brand p{margin:0;font-size:12px;color:var(--muted)}
+
+    nav{display:flex;gap:14px;align-items:center}
+    nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:13px}
+    nav a:hover{color:var(--accent-b)}
+
+    .controls{display:flex;gap:10px;align-items:center}
+
+    /* toast greeting */
+    .toast{
+      position:fixed;right:20px;top:18px;padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));
+      color:white;box-shadow:0 10px 30px rgba(2,6,23,0.45);font-weight:600;z-index:60;opacity:0;transform:translateY(-8px);transition:all .35s ease;
+    }
+    .toast.show{opacity:1;transform:none}
+
+    /* Hero */
+    .hero{
+      display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:center;position:relative;margin-bottom:20px;
+      border-radius:16px;padding:28px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      box-shadow:0 10px 40px rgba(2,6,23,0.5);
+      overflow:visible;
+    }
+    .hero-left h2{margin:0;font-size:28px;line-height:1.05}
+    .role{margin:10px 0 18px;color:var(--muted);font-size:15px;min-height:22px}
+    .cta{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:0;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));color:white;font-weight:700;text-decoration:none;cursor:pointer;
+      box-shadow:0 8px 18px rgba(6,14,26,0.45);
+    }
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:700}
+
+    /* profile card */
+    .profile-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid var(--glass-border)}
+    .profile-card h3{margin:8px 0 4px 0}
+    .profile-card p{margin:0;color:var(--muted);font-size:14px}
+
+    /* sections */
+    .section{margin-top:28px}
+    .section .title{font-size:16px;margin:0 0 12px 0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+
+    /* card visuals */
+    .card{
+      --tiltX:0deg; --tiltY:0deg;
+      background:var(--card);
+      padding:18px;border-radius:14px;border:1px solid var(--glass-border);
+      transition:transform .22s cubic-bezier(.2,.9,.2,1), box-shadow .22s;
+      transform: perspective(1000px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateZ(0);
+      will-change: transform;
+      position:relative;overflow:hidden;
+      box-shadow:0 8px 30px rgba(2,6,23,0.45);
+    }
+    .card .icon{font-size:30px;margin-bottom:10px}
+    .card h4{margin:0 0 8px 0}
+    .card p{margin:0;color:var(--muted);line-height:1.45}
+
+    /* glow layers */
+    .card::after{content:'';position:absolute;inset:-50%;background:linear-gradient(45deg, rgba(124,58,237,0.08), rgba(6,182,212,0.06));transform:translateY(30%);opacity:0;transition:opacity .25s, transform .5s}
+    .card:hover::after{opacity:1;transform:translateY(0)}
+
+    /* reveal animation */
+    .reveal{opacity:0;transform:translateY(18px) scale(.995);transition:all .6s cubic-bezier(.2,.9,.2,1);will-change:transform,opacity}
+    .reveal.in-view{opacity:1;transform:none}
+
+    /* small cursor follower */
+    .cursor, .cursor-ring{
+      position:fixed;left:0;top:0;pointer-events:none;z-index:9999;mix-blend-mode:screen;
+      transition:transform .12s linear;
+    }
+    .cursor{width:8px;height:8px;border-radius:50%;background:linear-gradient(90deg,var(--accent-a),var(--accent-b));transform:translate(-50%,-50%) scale(1)}
+    .cursor-ring{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,0.08);transform:translate(-50%,-50%);opacity:0.75}
+
+    /* typed caret */
+    .txt-caret{display:inline-block;width:2px;height:20px;background:var(--accent-b);margin-left:6px;vertical-align:middle;animation:blink 1s step-end infinite;}
+    @keyframes blink{50%{opacity:0}}
+
+    /* footer */
+    footer{margin-top:36px;text-align:center;color:var(--muted);font-size:13px;padding-bottom:80px}
+
+    /* responsive */
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr; padding:20px}
+      .avatar{width:56px;height:56px}
+      nav{display:none}
+    }
+
+    /* reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .card, .hero::before, .avatar, #bg {animation:none!important;transition:none!important}
+      .cursor, .cursor-ring{display:none}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- interactive canvas bg -->
+  <canvas id="bg"></canvas>
+
+  <div class="container">
+
+    <!-- greeting toast -->
+    <div class="toast" id="gtoast" aria-live="polite" role="status"></div>
+
+    <header>
+      <div class="brand">
+        <div class="avatar" aria-hidden="true">
+          <img src="jisan.jpg" alt="MD JISAN">
+        </div>
+        <div>
+          <h1>MD JISAN</h1>
+          <p>Web Developer • HTML • CSS • Frontend</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <nav>
+          <a href="#about">About</a>
+          <a href="#learn">Learn</a>
+          <a href="#story">Story</a>
+          <a href="#futures">Futures</a>
+          <a href="#contact">Contact</a>
+        </nav>
+
+        <button id="themeToggle"class="btn ghost" aria-pressed="false" title="Toggle theme"></button>
+      </div>
+    </header>
+
+    <!-- hero -->
+    <section class="hero" role="region" aria-label="Intro">
+      <div class="hero-left">
+        <h2>Hello — I'm <strong>MD JISAN</strong></h2>
+        <div class="role">
+          <span id="typed"></span><span class="txt-caret" aria-hidden="true"></span>
+        </div>
+        <div class="cta">
+          <a class="btn" href="mailto:ibnasina84@gmail.com">Email Me</a>
+          <a class="btn ghost" href="tel:+8801953289133">WhatsApp</a>
+        </div>
+        <p style="margin-top:14px;color:var(--muted);font-size:14px">I build fast, beautiful & accessible websites using modern HTML, CSS and lightweight JS.</p>
+      </div>
+
+      <aside class="profile-card" id="about" role="complementary" aria-label="Contact card">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+          <div style="width:72px;height:72px;border-radius:12px;overflow:hidden;flex:0 0 72px;border:2px solid rgba(255,255,255,0.06)">
+            <img src="jisan.jpg" alt="Jisan profile" style="width:100%;height:100%;object-fit:cover;display:block" />
+          </div>
+          <div>
+            <h3 style="margin:0">MD JISAN</h3>
+            <p style="margin:4px 0 0 0;color:var(--muted);font-size:13px">Dhaka, Bangladesh</p>
+          </div>
+        </div>
+
+        <p style="margin:8px 0;color:var(--muted);font-size:13px">Email: <a href="mailto:ibnasina84@gmail.com" style="color:inherit;text-decoration:underline">ibnasina84@gmail.com</a><br>Phone: <a href="tel:+8801953289133" style="color:inherit;text-decoration:underline">+88 01953-289133</a></p>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <a class="btn" href="#projects">Projects</a>
+          <a class="btn ghost" href="#story">My Story</a>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Learn More -->
+    <section class="section" id="learn" aria-labelledby="learnTitle">
+      <p class="title" id="learnTitle">Learn More</p>
+      <div class="grid">
+        <article class="card reveal" data-tilt>
+          <div class="icon">📄</div>
+          <h4>HTML</h4>
+          <p>HTML gives structure to your ideas — semantic markup makes content accessible and SEO-friendly.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">🎨</div>
+          <h4>CSS</h4>
+          <p>CSS empowers design: layouts, animations, themes, and responsive systems for any screen size.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">💻</div>
+          <h4>Web Development</h4>
+          <p>Web development blends UI, performance and UX — I aim for clean, maintainable, fast results.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">🚀</div>
+          <h4>Career</h4>
+          <p>Step-by-step growth: practice, build projects, collaborate and keep learning every day.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Life Story -->
+    <section class="section" id="story" aria-labelledby="storyTitle">
+      <p class="title" id="storyTitle">A Short Story — Introduction & Journey</p>
+      <div class="card reveal" style="padding:22px">
+        <p style="color:var(--muted);white-space:pre-line">
+I am MD JISAN. Since my childhood, I have been fascinated by computers. Initially I played games, later I wondered how they were made.
+A YouTube web development tutorial sparked my interest — I began learning HTML & CSS.
+Building my first heading/button showed me how small code can create beautiful pages.
+With each project my confidence grew — my aim: elegant design without heavy libraries.
+I learn from tutorials & articles, practice every day, and love building small sites for friends.
+I enjoy problem-solving and steadily working toward larger goals through continuous learning.
+        </p>
+      </div>
+    </section>
+
+    <!-- Futures & Trends -->
+    <section class="section" id="futures" aria-labelledby="futureTitle">
+      <p class="title" id="futureTitle">Futures & Trends</p>
+      <div class="grid">
+        <article class="card reveal" data-tilt>
+          <div class="icon">✨</div>
+          <h4>Future of CSS</h4>
+          <p>Container queries, subgrid, and advanced custom properties will enable even richer layouts and components.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">🔗</div>
+          <h4>Web Development</h4>
+          <p>Performance-first, edge-enabled, accessible experiences will continue to dominate web strategy.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">🧰</div>
+          <h4>Tools & Workflow</h4>
+          <p>Automation, fast build tools, and strong debugging workflows help deliver production-quality results.</p>
+        </article>
+
+        <article class="card reveal" data-tilt>
+          <div class="icon">📈</div>
+          <h4>Learning Paths</h4>
+          <p>Start with HTML/CSS → JS → Git → frameworks & testing. Build real projects and iterate quickly.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer id="contact">
+      <p>Designed & built by MD JISAN • <a href="mailto:ibnasina84@gmail.com" style="color:var(--muted);text-decoration:none">ibnasina84@gmail.com</a></p>
+    </footer>
+
+  </div>
+
+  <!-- cursor follower -->
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <script>
+    /* ---------------------
+       Helper & Preferences
+       --------------------- */
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* ---------------------
+       Theme toggle (light/dark)
+       --------------------- */
+    const themeToggle = document.getElementById('themeToggle');
+    const root = document.documentElement;
+    function setTheme(theme){
+      if(theme === 'light') root.setAttribute('data-theme','light');
+      else root.removeAttribute('data-theme');
+      localStorage.setItem('site-theme', theme);
+      themeToggle.setAttribute('aria-pressed', theme === 'light');
+    }
+    // init
+    const saved = localStorage.getItem('site-theme');
+    if(saved) setTheme(saved);
+    else {
+      // auto-detect (optional)
+      const hour = new Date().getHours();
+      setTheme((hour >= 6 && hour < 18) ? 'light' : 'dark');
+    }
+    themeToggle.addEventListener('click', () => {
+      const active = root.getAttribute('data-theme') === 'light';
+      setTheme(active ? 'dark' : 'light');
+    });
+
+    /* ---------------------
+       Greeting toast
+       --------------------- */
+    const toast = document.getElementById('gtoast');
+    function showGreeting(){
+      const h = new Date().getHours();
+      let g = 'Welcome!';
+      if(h < 12) g = 'Good morning, Sir!';
+      else if(h < 18) g = 'Good afternoon, Sir!';
+      else g = 'Good evening,Sir!';
+      toast.textContent = g + ' — Thanks for visiting ✨';
+      toast.classList.add('show');
+      setTimeout(()=> toast.classList.remove('show'), 4200);
+    }
+    // show once per session
+    if(!sessionStorage.getItem('greetShown')) {
+      setTimeout(showGreeting, 700);
+      sessionStorage.setItem('greetShown','1');
+    }
+
+    /* ---------------------
+       Typed text effect
+       --------------------- */
+    const typedEl = document.getElementById('typed');
+    const phrases = ['Frontend Developer', 'HTML & CSS Enthusiast', 'Building Clean Interfaces', 'Accessible & Fast Websites'];
+    let ti = 0, ci = 0, forward = true;
+    function tick(){
+      if(!typedEl) return;
+      const txt = phrases[ti];
+      if(forward){
+        ci++;
+        typedEl.textContent = txt.slice(0,ci);
+        if(ci === txt.length){ forward = false; setTimeout(tick, 900); return; }
+      } else {
+        ci--;
+        typedEl.textContent = txt.slice(0,ci);
+        if(ci === 0){ forward = true; ti = (ti+1) % phrases.length; }
+      }
+      setTimeout(tick, forward ? 80 : 28);
+    }
+    if(!prefersReduced) tick();
+
+    /* ---------------------
+       Reveal on scroll (IntersectionObserver)
+       --------------------- */
+    const reveals = document.querySelectorAll('.reveal');
+    if('IntersectionObserver' in window && !prefersReduced){
+      const obs = new IntersectionObserver((entries)=>{
+        entries.forEach(entry=>{
+          if(entry.isIntersecting){
+            entry.target.classList.add('in-view');
+            obs.unobserve(entry.target);
+          }
+        });
+      },{threshold:0.15});
+      reveals.forEach((el,i)=> {
+        el.style.transitionDelay = (i*80)+'ms';
+        obs.observe(el);
+      });
+    } else {
+      // fallback: just show
+      reveals.forEach(el => el.classList.add('in-view'));
+    }
+
+    /* ---------------------
+       Card tilt effect (mouse)
+       --------------------- */
+    function bindTilt(card){
+      if(prefersReduced) return;
+      const rect = ()=> card.getBoundingClientRect();
+      function onMove(e){
+        const r = rect();
+        const x = (e.clientX - r.left) / r.width;
+        const y = (e.clientY - r.top) / r.height;
+        const tiltX = ( (y - 0.5) * -10 ).toFixed(2);
+        const tiltY = ( (x - 0.5) * 10 ).toFixed(2);
+        card.style.setProperty('--tiltX', tiltX + 'deg');
+        card.style.setProperty('--tiltY', tiltY + 'deg');
+        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(0) scale(1.01)`;
+      }
+      function onLeave(){
+        card.style.setProperty('--tiltX','0deg');
+        card.style.setProperty('--tiltY','0deg');
+        card.style.transform = '';
+      }
+      card.addEventListener('mousemove', onMove);
+      card.addEventListener('mouseleave', onLeave);
+      card.addEventListener('touchstart', onMove,{passive:true});
+      card.addEventListener('touchend', onLeave,{passive:true});
+    }
+    document.querySelectorAll('[data-tilt]').forEach(bindTilt);
+
+    /* ---------------------
+       Cursor follower
+       --------------------- */
+    if(!prefersReduced){
+      const cursor = document.getElementById('cursor');
+      const ring = document.getElementById('cursorRing');
+      let mouseX = -100, mouseY = -100, ringX = -100, ringY = -100;
+      window.addEventListener('mousemove', (e)=>{
+        mouseX = e.clientX; mouseY = e.clientY;
+        cursor.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+      });
+      // smooth ring
+      function animateRing(){
+        ringX += (mouseX - ringX) * 0.18;
+        ringY += (mouseY - ringY) * 0.18;
+        ring.style.transform = `translate(${ringX}px, ${ringY}px)`;
+        requestAnimationFrame(animateRing);
+      }
+      animateRing();
+      // hide when leaving window
+      window.addEventListener('mouseleave', ()=> { ring.style.opacity = '0'; cursor.style.opacity = '0'; });
+      window.addEventListener('mouseenter', ()=> { ring.style.opacity = '0.85'; cursor.style.opacity = '1'; });
+      // pointer interactions for clickable elements
+      document.addEventListener('mouseover', (e)=>{
+        const el = e.target;
+        if(el.closest('a, button, .btn, .card')) {
+          cursor.style.transform += ' scale(0.8)';
+          ring.style.transform += ' scale(1.2)';
+        }
+      });
+    }
+
+    /* ---------------------
+       Canvas particles background
+       --------------------- */
+    (function(){
+      if(prefersReduced) return;
+      const canvas = document.getElementById('bg');
+      const ctx = canvas.getContext('2d');
+      let W = canvas.width = innerWidth;
+      let H = canvas.height = innerHeight;
+      const particles = [];
+      const pcount = Math.max(40, Math.floor((W*H)/90000)); // density
+      const mouse = {x:W/2,y:H/2,down:false};
+
+      function rand(min,max){ return Math.random()*(max-min)+min }
+
+      function resize(){
+        W = canvas.width = innerWidth;
+        H = canvas.height = innerHeight;
+      }
+      addEventListener('resize', resize);
+
+      function Particle(){
+        this.x = rand(0,W);
+        this.y = rand(0,H);
+        this.vx = rand(-0.4,0.8);
+        this.vy = rand(-0.4,0.8);
+        this.r = rand(1,3.6);
+        this.life = rand(60, 200);
+        this.age = 0;
+        this.h = rand(180,260);
+      }
+      Particle.prototype.step = function(){
+        this.x += this.vx + (mouse.x - this.x)*0.0008;
+        this.y += this.vy + (mouse.y - this.y)*0.0008;
+        this.age++;
+        if(this.x< -50) this.x = W+30;
+        if(this.x>W+50) this.x = -30;
+        if(this.y< -50) this.y = H+30;
+        if(this.y>H+50) this.y = -30;
+        if(this.age > this.life){
+          this.x = rand(0,W);
+          this.y = rand(0,H);
+          this.age = 0;
+          this.life = rand(60,200);
+          this.vx = rand(-0.6,0.6);
+          this.vy = rand(-0.6,0.6);
+        }
+      }
+      function init(){
+        particles.length = 0;
+        for(let i=0;i<pcount;i++) particles.push(new Particle());
+      }
+      init();
+
+      addEventListener('mousemove',(e)=>{ mouse.x = e.clientX; mouse.y = e.clientY; });
+
+      function render(){
+        ctx.clearRect(0,0,W,H);
+        // subtle gradient overlay
+        const g = ctx.createLinearGradient(0,0,W,H);
+        g.addColorStop(0, 'rgba(124,58,237,0.03)');
+        g.addColorStop(1, 'rgba(6,182,212,0.02)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0,0,W,H);
+
+        // draw particles and faint lines
+        for(let i=0;i<particles.length;i++){
+          const p = particles[i];
+          p.step();
+          const alpha = 0.5 * (1 - p.age/p.life) + 0.1;
+          ctx.beginPath();
+          ctx.fillStyle = `hsla(${p.h}, 80%, 60%, ${alpha})`;
+          ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fill();
+
+          // connect nearby particles subtly
+          for(let j=i+1;j<particles.length;j++){
+            const q = particles[j];
+            const dx = p.x-q.x, dy = p.y-q.y;
+            const d = Math.sqrt(dx*dx+dy*dy);
+            if(d < 110){
+              ctx.beginPath();
+              ctx.strokeStyle = `rgba(255,255,255,${(0.02*(110-d))})`;
+              ctx.lineWidth = 0.7;
+              ctx.moveTo(p.x,p.y);
+              ctx.lineTo(q.x,q.y);
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(render);
+      }
+      render();
+    })();
+
+    /* ---------------------
+       small progressive polish
+       --------------------- */
+    // Smooth initial reveal for container
+    document.querySelector('.container').style.opacity = '0';
+    setTimeout(()=> document.querySelector('.container').style.transition = 'opacity .6s ease', 20);
+    setTimeout(()=> document.querySelector('.container').style.opacity = '1', 80);
+
+    // keyboard accessibility: Escape closes toast early
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') toast.classList.remove('show'); });
+
+  </script>
+</body>
+</html>
